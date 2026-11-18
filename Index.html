@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  :root { --bg:#f5f7f3; --card:#fff; --text:#1c241f; --muted:#6a756e; --line:#e1e6df; --accent:#2e8b57; --soft:#e2f2e8; --danger:#c0392b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111412; --card:#1b201d; --text:#e7ece8; --muted:#97a29b; --line:#2b332e; --accent:#4cc082; --soft:#1e3328; --danger:#e57368; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); font-size:16px; -webkit-tap-highlight-color:transparent; }
+  header { position:sticky; top:0; z-index:5; background:var(--bg); padding:14px 16px 10px; display:flex; align-items:center; justify-content:space-between; max-width:640px; margin:0 auto; }
+  header h1 { margin:0; font-size:22px; }
+  main { padding:0 16px 96px; max-width:640px; margin:0 auto; }
+  nav { position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom); z-index:5; }
+  nav button { flex:1; border:0; background:none; padding:8px 0 10px; font-size:12px; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; }
+  nav button span { font-size:22px; }
+  nav button.on { color:var(--accent); font-weight:600; }
+  h2 { font-size:22px; margin:8px 0 4px; }
+  h3 { font-size:16px; margin:0 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .card.today { border-color:var(--accent); }
+  .row { display:flex; align-items:center; gap:8px; }
+  .between { justify-content:space-between; }
+  .muted { color:var(--muted); font-size:14px; }
+  .btn { border:0; border-radius:10px; padding:10px 16px; font:inherit; font-size:15px; font-weight:600; background:var(--accent); color:#fff; cursor:pointer; white-space:nowrap; }
+  .btn.ghost { background:var(--soft); color:var(--accent); }
+  .btn.danger { background:none; color:var(--danger); }
+  .btn.small { padding:6px 12px; font-size:13px; }
+  .icon { border:0; background:none; color:var(--text); font-size:24px; padding:4px 10px; cursor:pointer; }
+  input, select, textarea { width:100%; font:inherit; padding:10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); }
+  textarea { min-height:120px; resize:vertical; }
+  label.f { display:block; font-size:13px; color:var(--muted); margin:12px 0 4px; }
+  .grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .grid4 label.f { margin-top:8px; }
+  .nav-week { margin:4px 0 12px; }
+  .slot { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .slot:first-of-type { border-top:0; }
+  .slot .add { color:var(--accent); }
+  .recipe { cursor:pointer; }
+  .check { display:flex; align-items:center; gap:12px; padding:9px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .check:first-of-type { border-top:0; }
+  .check input { width:22px; height:22px; flex:none; accent-color:var(--accent); }
+  .check.done span { text-decoration:line-through; color:var(--muted); }
+  .step { display:flex; gap:12px; padding:12px 0; border-top:1px solid var(--line); font-size:18px; line-height:1.45; cursor:pointer; }
+  .step:first-of-type { border-top:0; }
+  .step b { flex:none; width:28px; height:28px; border-radius:50%; background:var(--soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:14px; }
+  .step.done { opacity:.4; text-decoration:line-through; }
+  .bar { height:10px; background:var(--line); border-radius:6px; overflow:hidden; margin:4px 0 10px; }
+  .bar div { height:100%; background:var(--accent); border-radius:6px; }
+  .bar.over div { background:var(--danger); }
+  .entry { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  .entry:first-of-type { border-top:0; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chips label { display:flex; align-items:center; gap:4px; padding:6px 10px; border:1px solid var(--line); border-radius:20px; font-size:14px; cursor:pointer; }
+  .chips input { width:auto; accent-color:var(--accent); }
+  .empty { text-align:center; padding:32px 12px; color:var(--muted); }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:flex-end; justify-content:center; z-index:10; }
+  #modal.open { display:flex; }
+  #modal .sheet { background:var(--card); width:100%; max-width:640px; max-height:92vh; overflow:auto; border-radius:18px 18px 0 0; padding:18px 16px 28px; }
+  #toast { position:fixed; top:12px; left:50%; transform:translateX(-50%); background:var(--text); color:var(--bg); padding:8px 14px; border-radius:20px; font-size:14px; display:none; z-index:20; }
+</style>
+</head>
+<body>
+<header><h1 id="title">Meal Prep Buddy</h1><button class="icon" onclick="openSettings()" title="Daily targets">⚙️</button></header>
+<main id="main"><div class="empty">Loading…</div></main>
+<nav>
+  <button data-tab="recipes"><span>🍳</span>Recipes</button>
+  <button data-tab="plan"><span>📅</span>Plan</button>
+  <button data-tab="grocery"><span>🛒</span>Grocery</button>
+  <button data-tab="nutrition"><span>📊</span>Nutrition</button>
+</nav>
+<div id="modal" onclick="if(event.target===this)closeModal()"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MACROS = [['kcal', 'Calories', 'kcal'], ['protein', 'Protein', 'g'], ['carbs', 'Carbs', 'g'], ['fat', 'Fat', 'g']];
+const UNITS = { g:'g', kg:'kg', mg:'mg', ml:'ml', l:'l', cup:'cup', cups:'cup', tbsp:'tbsp', tsp:'tsp', oz:'oz', lb:'lb', lbs:'lb',
+  pc:'pc', pcs:'pc', piece:'pc', pieces:'pc', can:'can', cans:'can', clove:'clove', cloves:'clove', slice:'slice', slices:'slice',
+  pack:'pack', packs:'pack', bunch:'bunch', pinch:'pinch' };
+
+const S = { tab: 'plan', week: ymd(monday(new Date())), day: ymd(new Date()), recipes: [], plan: [], settings: {}, checked: [], dayData: null, cook: null, q: '' };
+
+/* ---------- helpers ---------- */
+function $(s) { return document.querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function parseYmd(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function monday(d) { return addDays(d, -((d.getDay() + 6) % 7)); }
+function fmtDate(d, opts) { return d.toLocaleDateString(undefined, opts || { month: 'short', day: 'numeric' }); }
+function round(n) { return Math.round(n * 100) / 100; }
+function lines(t) { return String(t || '').split('\n').map(s => s.trim()).filter(Boolean); }
+function recipe(id) { return S.recipes.find(r => r.id === id); }
+function macroText(o) { return `${Math.round(o.kcal)} kcal · P${Math.round(o.protein)} C${Math.round(o.carbs)} F${Math.round(o.fat)}`; }
+function toast(msg, ms) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); if (ms !== 0) t._h = setTimeout(() => t.style.display = 'none', ms || 2200); }
+
+function api(fn, ...args) {
+  toast('Saving…', 0);
+  return new Promise((resolve, reject) => google.script.run
+    .withSuccessHandler(r => { $('#toast').style.display = 'none'; resolve(r); })
+    .withFailureHandler(e => { toast('Error: ' + e.message, 5000); reject(e); })[fn](...args));
+}
+
+async function load() { Object.assign(S, await api('getAll', S.week)); render(); }
+async function loadDay() {
+  const d = parseYmd(S.day);
+  S.dayData = await api('getDay', S.day, ymd(monday(d)), (d.getDay() + 6) % 7);
+  render();
+}
+
+function openModal(html) { $('#sheet').innerHTML = html; $('#modal').classList.add('open'); }
+function closeModal() { $('#modal').classList.remove('open'); }
+
+/* ---------- navigation ---------- */
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  S.tab = b.dataset.tab; S.cook = null; window.scrollTo(0, 0);
+  if (S.tab === 'nutrition' && !S.dayData) loadDay(); else render();
+});
+
+function render() {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+  $('#title').textContent = { recipes: 'Recipes', plan: 'Meal Plan', grocery: 'Grocery List', nutrition: 'Nutrition' }[S.tab];
+  const views = { recipes: renderRecipes, plan: renderPlan, grocery: renderGrocery, nutrition: renderNutrition };
+  $('#main').innerHTML = views[S.tab]();
+}
+
+function weekNav() {
+  const start = parseYmd(S.week);
+  return `<div class="row between nav-week"><button class="icon" onclick="shiftWeek(-1)">‹</button>
+    <b>${fmtDate(start)} – ${fmtDate(addDays(start, 6))}</b><button class="icon" onclick="shiftWeek(1)">›</button></div>`;
+}
+function shiftWeek(n) { S.week = ymd(addDays(parseYmd(S.week), n * 7)); load(); }
+
+/* ---------- Recipes ---------- */
+function renderRecipes() {
+  if (S.cook && recipe(S.cook)) return renderCook(recipe(S.cook));
+  return `<div class="row" style="margin-bottom:12px"><input placeholder="Search recipes" value="${esc(S.q)}" oninput="S.q=this.value;$('#rlist').innerHTML=recipeList()">
+    <button class="btn" onclick="editRecipe()">+ New</button></div><div id="rlist">${recipeList()}</div>`;
+}
+function recipeList() {
+  const q = S.q.toLowerCase();
+  const list = S.recipes.filter(r => r.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+  if (!S.recipes.length) return `<div class="empty">No recipes yet.<br>Tap <b>+ New</b> to add your first one.</div>`;
+  return list.map(r => `<div class="card recipe" onclick="S.cook='${r.id}';render();scrollTo(0,0)">
+    <b>${esc(r.name)}</b><div class="muted">${r.servings} servings · per serving ${macroText(r)}</div></div>`).join('')
+    || `<div class="empty">No matches.</div>`;
+}
+
+function renderCook(r) {
+  const ings = lines(r.ingredients), steps = lines(r.steps).map(s => s.replace(/^\d+[.)]\s*/, ''));
+  return `<button class="btn ghost small" onclick="S.cook=null;render()">‹ All recipes</button>
+    <h2>${esc(r.name)}</h2><p class="muted">Makes ${r.servings} servings · per serving ${macroText(r)}</p>
+    <div class="card"><h3>Ingredients</h3>${ings.map(i => `<label class="check"><input type="checkbox" onchange="this.parentNode.classList.toggle('done',this.checked)"><span>${esc(i)}</span></label>`).join('') || '<p class="muted">None listed</p>'}</div>
+    <div class="card"><h3>Steps</h3>${steps.map((s, i) => `<div class="step" onclick="this.classList.toggle('done')"><b>${i + 1}</b><span>${esc(s)}</span></div>`).join('') || '<p class="muted">None listed</p>'}</div>
+    <div class="row between"><button class="btn ghost" onclick="editRecipe('${r.id}')">Edit</button><button class="btn danger" onclick="delRecipe('${r.id}')">Delete</button></div>`;
+}
+
+function editRecipe(id) {
+  const r = recipe(id) || { name: '', servings: 4, kcal: '', protein: '', carbs: '', fat: '', ingredients: '', steps: '' };
+  openModal(`<h3>${id ? 'Edit recipe' : 'New recipe'}</h3>
+    <label class="f">Name</label><input id="r_name" value="${esc(r.name)}">
+    <label class="f">Servings this recipe makes</label><input id="r_servings" type="number" min="1" value="${r.servings}">
+    <div class="muted" style="margin-top:12px">Nutrition per serving</div>
+    <div class="grid4">${MACROS.map(([k, n, u]) => `<div><label class="f">${n} (${u})</label><input id="r_${k}" type="number" inputmode="decimal" value="${r[k]}"></div>`).join('')}</div>
+    <label class="f">Ingredients — one per line, e.g. "200 g chicken breast" or "2 eggs"</label><textarea id="r_ingredients">${esc(r.ingredients)}</textarea>
+    <label class="f">Steps — one per line</label><textarea id="r_steps">${esc(r.steps)}</textarea>
+    <div class="row" style="margin-top:16px"><button class="btn" onclick="saveRecipe('${id || ''}')">Save</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveRecipe(id) {
+  const r = { id };
+  ['name', 'servings', 'kcal', 'protein', 'carbs', 'fat', 'ingredients', 'steps'].forEach(k => r[k] = $('#r_' + k).value);
+  if (!r.name.trim()) return toast('Give it a name');
+  closeModal();
+  S.cook = await api('saveRecipe', r);
+  await load();
+}
+async function delRecipe(id) {
+  if (!confirm('Delete this recipe? It will also be removed from your meal plans.')) return;
+  await api('deleteRecipe', id); S.cook = null; await load();
+}
+
+/* ---------- Meal Plan ---------- */
+function planAt(day, meal) { return S.plan.find(p => p.day === day && p.meal === meal); }
+
+function renderPlan() {
+  const today = ymd(new Date());
+  let h = weekNav();
+  for (let d = 0; d < 7; d++) {
+    const date = addDays(parseYmd(S.week), d);
+    let kcal = 0;
+    const slots = MEALS.map(m => {
+      const p = planAt(d, m), r = p && recipe(p.recipeId);
+      if (r) kcal += r.kcal;
+      return `<div class="slot" onclick="editSlot(${d},'${m}')"><span class="muted">${m}</span>${r ? `<span>${esc(r.name)}</span>` : '<span class="add">+ add</span>'}</div>`;
+    }).join('');
+    h += `<div class="card ${ymd(date) === today ? 'today' : ''}"><div class="row between"><b>${DAYS[d]} ${fmtDate(date)}</b>
+      <span class="muted">${Math.round(kcal)} / ${S.settings.kcal} kcal</span></div>${slots}</div>`;
+  }
+  return h;
+}
+
+function editSlot(d, m) {
+  if (!S.recipes.length) return toast('Add a recipe first');
+  const cur = planAt(d, m);
+  openModal(`<h3>${DAYS[d]} · ${m}</h3>
+    <label class="f">Recipe</label><select id="slot_recipe"><option value="">— none —</option>
+    ${S.recipes.slice().sort((a, b) => a.name.localeCompare(b.name)).map(r => `<option value="${r.id}" ${cur && cur.recipeId === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
+    <label class="f">Batch prep — also use for ${m.toLowerCase()} on:</label>
+    <div class="chips">${DAYS.map((n, i) => `<label><input type="checkbox" value="${i}" ${i === d ? 'checked' : ''}>${n}</label>`).join('')}</div>
+    <div class="row" style="margin-top:18px"><button class="btn" onclick="saveSlot('${m}')">Save</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveSlot(m) {
+  const id = $('#slot_recipe').value;
+  const days = [...document.querySelectorAll('.chips input:checked')].map(i => +i.value);
+  closeModal();
+  await api('setPlan', S.week, days, m, id);
+  S.dayData = null;
+  await load();
+}
+
+/* ---------- Grocery ---------- */
+function parseIng(line) {
+  const m = line.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*(.*)$/);
+  if (!m) return { qty: null, unit: '', name: line };
+  const qty = m[1].split(/\s+/).reduce((sum, part) => {
+    const [a, b] = part.split('/').map(Number);
+    return sum + (b ? a / b : a);
+  }, 0);
+  const words = m[2].split(/\s+/);
+  const unit = words.length > 1 && UNITS[words[0].toLowerCase().replace(/\.$/, '')];
+  if (unit) words.shift();
+  return { qty, unit: unit || '', name: words.join(' ') };
+}
+
+function groceryData() {
+  const counts = {};
+  S.plan.forEach(p => { if (recipe(p.recipeId)) counts[p.recipeId] = (counts[p.recipeId] || 0) + 1; });
+  const cooking = Object.keys(counts).map(id => {
+    const r = recipe(id);
+    return { r, meals: counts[id], batches: Math.ceil(counts[id] / r.servings) };
+  });
+  const items = {};
+  cooking.forEach(({ r, batches }) => lines(r.ingredients).forEach(l => {
+    const g = parseIng(l);
+    const key = g.unit + '|' + g.name.toLowerCase();
+    const it = items[key] || (items[key] = { key, name: g.name, unit: g.unit, qty: 0 });
+    if (g.qty != null) it.qty += g.qty * batches;
+  }));
+  return { cooking, items: Object.values(items) };
+}
+
+function renderGrocery() {
+  const { cooking, items } = groceryData();
+  let h = weekNav();
+  if (!cooking.length) return h + `<div class="empty">Nothing planned this week.<br>Add meals in the <b>Plan</b> tab and your list builds itself.</div>`;
+  h += `<div class="card"><h3>🍳 To cook this week</h3>${cooking.map(c =>
+    `<div class="entry"><span>${esc(c.r.name)}</span><span class="muted">${c.batches} batch${c.batches > 1 ? 'es' : ''} · ${c.meals} meal${c.meals > 1 ? 's' : ''}</span></div>`).join('')}</div>`;
+  const isOn = it => S.checked.includes(it.key);
+  items.sort((a, b) => isOn(a) - isOn(b) || a.name.localeCompare(b.name));
+  S.items = items;
+  const left = items.filter(it => !isOn(it)).length;
+  h += `<div class="card"><div class="row between"><h3>Shopping list</h3><span class="muted">${left} left</span></div>
+    ${items.map((it, i) => `<label class="check ${isOn(it) ? 'done' : ''}"><input type="checkbox" ${isOn(it) ? 'checked' : ''} onchange="toggleItem(${i},this.checked)">
+      <span>${it.qty ? `<b>${round(it.qty)}${it.unit ? ' ' + it.unit : ''}</b> ` : ''}${esc(it.name)}</span></label>`).join('')}</div>`;
+  if (S.checked.length) h += `<button class="btn ghost" onclick="S.checked=[];saveChecks()">Uncheck all</button>`;
+  return h;
+}
+function toggleItem(i, on) {
+  const key = S.items[i].key;
+  S.checked = S.checked.filter(k => k !== key);
+  if (on) S.checked.push(key);
+  saveChecks();
+}
+function saveChecks() { render(); api('setGroceryChecked', S.week, S.checked); }
+
+/* ---------- Nutrition ---------- */
+function renderNutrition() {
+  const dd = S.dayData;
+  if (!dd) return `<div class="empty">Loading…</div>`;
+  const date = parseYmd(S.day), isToday = S.day === ymd(new Date());
+  const tot = { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+  dd.log.forEach(e => MACROS.forEach(([k]) => tot[k] += e[k]));
+
+  let h = `<div class="row between nav-week"><button class="icon" onclick="shiftDay(-1)">‹</button>
+    <b>${isToday ? 'Today' : fmtDate(date, { weekday: 'short', month: 'short', day: 'numeric' })}</b>
+    <button class="icon" onclick="shiftDay(1)">›</button></div>`;
+
+  h += `<div class="card">${MACROS.map(([k, n, u]) => {
+    const target = S.settings[k] || 0, pct = target ? Math.min(100, tot[k] / target * 100) : 0;
+    return `<div class="row between"><span>${n}</span><span class="muted">${Math.round(tot[k])} / ${target} ${u}</span></div>
+      <div class="bar ${tot[k] > target ? 'over' : ''}"><div style="width:${pct}%"></div></div>`;
+  }).join('')}</div>`;
+
+  const planned = dd.planned.filter(p => recipe(p.recipeId)).sort((a, b) => MEALS.indexOf(a.meal) - MEALS.indexOf(b.meal));
+  if (planned.length) {
+    h += `<div class="card"><h3>Planned</h3>${planned.map(p => {
+      const r = recipe(p.recipeId);
+      const logged = dd.log.some(e => e.meal === p.meal && e.name === r.name);
+      return `<div class="entry"><span><span class="muted">${p.meal}</span><br>${esc(r.name)}</span>
+        ${logged ? '<span class="muted">✓ logged</span>' : `<button class="btn small" onclick="logRecipe('${p.meal}','${r.id}')">Ate it</button>`}</div>`;
+    }).join('')}</div>`;
+  }
+
+  h += `<div class="card"><div class="row between"><h3>Eaten</h3><button class="btn small" onclick="openAddFood()">+ Add food</button></div>
+    ${dd.log.length ? dd.log.map(e => `<div class="entry"><span><span class="muted">${esc(e.meal)}</span><br>${esc(e.name)}${e.servings !== 1 ? ` ×${e.servings}` : ''}
+      <br><span class="muted">${macroText(e)}</span></span><button class="icon" onclick="delLog('${e.id}')" title="Remove">×</button></div>`).join('')
+      : '<p class="muted">Nothing logged yet.</p>'}</div>`;
+  return h;
+}
+function shiftDay(n) { S.day = ymd(addDays(parseYmd(S.day), n)); S.dayData = null; render(); loadDay(); }
+
+async function addLogEntry(meal, name, servings, per) {
+  const e = { date: S.day, meal, name, servings };
+  MACROS.forEach(([k]) => e[k] = round((+per[k] || 0) * servings));
+  await api('addLog', e);
+  await loadDay();
+}
+function logRecipe(meal, id) { const r = recipe(id); addLogEntry(meal, r.name, 1, r); }
+async function delLog(id) { await api('deleteLog', id); await loadDay(); }
+
+function openAddFood() {
+  const hr = new Date().getHours();
+  const meal = hr < 11 ? 'Breakfast' : hr < 16 ? 'Lunch' : hr < 21 ? 'Dinner' : 'Snack';
+  openModal(`<h3>Add food</h3>
+    <label class="f">Meal</label><select id="a_meal">${MEALS.map(m => `<option ${m === meal ? 'selected' : ''}>${m}</option>`).join('')}</select>
+    <label class="f">From a recipe (optional)</label><select id="a_recipe" onchange="fillFromRecipe(this.value)"><option value="">— type it in below —</option>
+      ${S.recipes.map(r => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select>
+    <label class="f">Name</label><input id="a_name" placeholder="e.g. Banana">
+    <label class="f">Servings</label><input id="a_servings" type="number" inputmode="decimal" value="1" step="0.5">
+    <div class="muted" style="margin-top:12px">Nutrition per serving</div>
+    <div class="grid4">${MACROS.map(([k, n, u]) => `<div><label class="f">${n} (${u})</label><input id="a_${k}" type="number" inputmode="decimal"></div>`).join('')}</div>
+    <div class="row" style="margin-top:16px"><button class="btn" onclick="saveFood()">Add</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+function fillFromRecipe(id) {
+  const r = recipe(id); if (!r) return;
+  $('#a_name').value = r.name;
+  MACROS.forEach(([k]) => $('#a_' + k).value = r[k]);
+}
+function saveFood() {
+  const name = $('#a_name').value.trim();
+  if (!name) return toast('Add a name');
+  const per = {}; MACROS.forEach(([k]) => per[k] = $('#a_' + k).value);
+  const meal = $('#a_meal').value, servings = +$('#a_servings').value || 1;
+  closeModal();
+  addLogEntry(meal, name, servings, per);
+}
+
+/* ---------- Settings ---------- */
+function openSettings() {
+  openModal(`<h3>Daily targets</h3>
+    <div class="grid4">${MACROS.map(([k, n, u]) => `<div><label class="f">${n} (${u})</label><input id="s_${k}" type="number" inputmode="decimal" value="${S.settings[k] || ''}"></div>`).join('')}</div>
+    <div class="row" style="margin-top:16px"><button class="btn" onclick="saveTargets()">Save</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveTargets() {
+  const s = {}; MACROS.forEach(([k]) => s[k] = +$('#s_' + k).value || 0);
+  closeModal();
+  await api('saveSettings', s);
+  S.settings = s; render();
+}
+
+load();
+</script>
+</body>
+</html>
