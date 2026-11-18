@@ -48,7 +48,7 @@ function sheet_(name) {
 function rows_(name) {
   const values = sheet_(name).getDataRange().getValues();
   const head = values.shift();
-  const tz = Session.getScriptTimeZone();
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
   return values.map(function (r, i) {
     const o = { _row: i + 2 };
     head.forEach(function (h, j) {

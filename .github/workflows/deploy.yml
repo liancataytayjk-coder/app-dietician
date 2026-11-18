@@ -1,0 +1,49 @@
+name: Deploy to Apps Script
+
+# Every push to main that touches the app goes live automatically.
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', '.clasp.json', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check one-time setup
+        id: ready
+        run: |
+          if [ -z "$CLASPRC_JSON" ] || [ ! -f .clasp.json ]; then
+            echo "::warning::Not set up yet: add the CLASPRC_JSON secret and commit .clasp.json (see README)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.ready.outputs.ok == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - if: steps.ready.outputs.ok == 'true'
+        name: Push code and update the web app
+        run: |
+          npm install -g @google/clasp@3.4.1
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          clasp push --force
+          # Reuse the existing web app deployment so the URL never changes.
+          ID=$(clasp list-deployments --json | jq -r '[.[] | select(.versionNumber != null)][0].deploymentId // empty')
+          if [ -z "$ID" ]; then
+            clasp create-deployment --description "Meal Prep Buddy"
+            ID=$(clasp list-deployments --json | jq -r '[.[] | select(.versionNumber != null)][0].deploymentId')
+          else
+            clasp update-deployment "$ID" --description "${GITHUB_SHA::7}"
+          fi
+          echo "### App URL: https://script.google.com/macros/s/$ID/exec" >> "$GITHUB_STEP_SUMMARY"
