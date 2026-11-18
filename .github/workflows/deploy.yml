@@ -33,10 +33,26 @@ jobs:
           node-version: 20
 
       - if: steps.ready.outputs.ok == 'true'
+        name: Check the Google key
+        run: |
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          if ! jq -e '.tokens.default.refresh_token' ~/.clasprc.json > /dev/null 2>&1; then
+            echo "::error::CLASPRC_JSON is not a complete key file. Copy ALL of ~/.clasprc.json, from the first { to the last }."
+            exit 1
+          fi
+          # Ask Google whether the key works; print only the error, never the token.
+          RESULT=$(jq -r '.tokens.default | "grant_type=refresh_token&client_id=\(.client_id|@uri)&client_secret=\(.client_secret|@uri)&refresh_token=\(.refresh_token|@uri)"' ~/.clasprc.json \
+            | curl -s https://oauth2.googleapis.com/token -d @- | jq -c '{error, error_description}')
+          if [ "$RESULT" != '{"error":null,"error_description":null}' ]; then
+            echo "::error::Google refused the key: $RESULT. Run 'clasp login' again in Cloud Shell and update the CLASPRC_JSON secret."
+            exit 1
+          fi
+          echo "Google key OK"
+
+      - if: steps.ready.outputs.ok == 'true'
         name: Push code and update the web app
         run: |
           npm install -g @google/clasp@3.4.1
-          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
           clasp push --force
           # Reuse the existing web app deployment so the URL never changes.
           ID=$(clasp list-deployments --json | jq -r '[.[] | select(.versionNumber != null)][0].deploymentId // empty')
